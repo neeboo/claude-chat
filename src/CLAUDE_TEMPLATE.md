@@ -44,20 +44,20 @@ Send immediately after each startup:
 **Configuration:**
 - Router can be configured via environment variables:
   - `CLAUDE_CHAT_HOST` (default: localhost)
-  - `CLAUDE_CHAT_PORT` (default: 3333)
+  - `CLAUDE_CHAT_PORT` (default: configured port)
   - `CLAUDE_ROUTER_URL` (overrides host/port if specified)
 
 **Router Endpoints:**
-- **Health Check**: `GET http://localhost:3333/health`
-- **Instance Status**: `GET http://localhost:3333/status`  
-- **Send Message**: `POST http://localhost:3333/message`
-- **Register Instance**: `POST http://localhost:3333/register`
+- **Health Check**: `GET http://localhost:<PORT>/health`
+- **Instance Status**: `GET http://localhost:<PORT>/status`  
+- **Send Message**: `POST http://localhost:<PORT>/message`
+- **Register Instance**: `POST http://localhost:<PORT>/register`
 
 **Inter-Instance Communication:**
 Claude instances can send messages to coordinate work:
 ```bash
 # Example: UI instance notifying Main about completion
-curl -X POST http://localhost:3333/message \
+curl -X POST http://localhost:<PORT>/message \
   -H "Content-Type: application/json" \
   -d '{"from": "ui", "to": "main", "content": "Component library finished"}'
 

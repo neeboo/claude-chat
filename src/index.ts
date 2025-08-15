@@ -369,19 +369,40 @@ class ClaudeMessageRouter {
     }
 }
 
-// Start the application
-const router = new ClaudeMessageRouter();
-router.start();
+import { ConfigManager } from './config';
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-    console.log('\nShutting down server...');
-    router.stop();
-    process.exit(0);
-});
+async function startRouter() {
+    try {
+        const configManager = ConfigManager.getInstance();
+        await configManager.initialize();
 
-process.on('SIGTERM', () => {
-    console.log('\nShutting down server...');
-    router.stop();
-    process.exit(0);
-}); export default router;
+        const effectivePort = configManager.getEffectivePort();
+        const router = new ClaudeMessageRouter(effectivePort);
+        router.start();
+
+        // Handle graceful shutdown
+        process.on('SIGINT', () => {
+            console.log('\nShutting down server...');
+            router.stop();
+            process.exit(0);
+        });
+
+        process.on('SIGTERM', () => {
+            console.log('\nShutting down server...');
+            router.stop();
+            process.exit(0);
+        });
+
+        return router;
+    } catch (error) {
+        console.error('❌ Failed to start router:', error);
+        process.exit(1);
+    }
+}
+
+// Start the application if this file is run directly
+if (import.meta.main) {
+    startRouter();
+}
+
+export default ClaudeMessageRouter;

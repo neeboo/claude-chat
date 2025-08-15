@@ -44,7 +44,7 @@ class ClaudeChatCLI {
             .option('-n, --name <name>', 'Custom name for the instance')
             .option('-s, --session <session>', 'Custom tmux session name')
             .option('-t, --type <type>', 'Window type', 'tmux-session')
-            .option('--router-url <url>', 'Router URL', 'http://localhost:3333')
+            .option('--router-url <url>', 'Router URL (will use config if not specified)')
             .action(async (workPath: string, role: string, options: any) => {
                 await this.registerInstance(workPath, role, options);
             });
@@ -52,13 +52,17 @@ class ClaudeChatCLI {
         // Start command  
         this.program
             .command('start')
-            .description('Start a Claude instance with tmux')
+            .description('Start a Claude instance with tmux (auto-init and register)')
             .argument('<path>', 'Path to the working directory')
             .argument('<role>', 'Role of the instance (main, ui, api, etc.)')
             .option('-n, --name <name>', 'Custom name for the instance')
             .option('-s, --session <session>', 'Custom tmux session name')
             .option('--proxy', 'Enable proxy_git before starting')
             .option('--no-attach', 'Do not attach to tmux session after creation')
+            .option('--no-init', 'Skip automatic initialization of project')
+            .option('--force-init', 'Force overwrite existing init files')
+            .option('--hooks-only', 'Only setup hooks during init, skip documentation')
+            .option('--docs-only', 'Only setup documentation during init, skip hooks')
             .action(async (workPath: string, role: string, options: any) => {
                 await this.startInstance(workPath, role, options);
             });
@@ -67,7 +71,7 @@ class ClaudeChatCLI {
         this.program
             .command('status')
             .description('Show router and instances status')
-            .option('--router-url <url>', 'Router URL', 'http://localhost:3333')
+            .option('--router-url <url>', 'Router URL (will use config if not specified)')
             .action(async (options: any) => {
                 await this.showStatus(options);
             });
@@ -76,7 +80,7 @@ class ClaudeChatCLI {
         this.program
             .command('list')
             .description('List all registered instances')
-            .option('--router-url <url>', 'Router URL', 'http://localhost:3333')
+            .option('--router-url <url>', 'Router URL (will use config if not specified)')
             .action(async (options: any) => {
                 await this.listInstances(options);
             });
@@ -192,35 +196,79 @@ class ClaudeChatCLI {
                 process.exit(1);
             }
 
+            console.log(`🚀 Starting Claude instance with auto-setup...`);
+
+            // Auto-initialize project unless --no-init is specified
+            if (!options.noInit) {
+                console.log(`\n📋 Step 1: Initializing project...`);
+                try {
+                    await this.autoInitProject(fullPath, {
+                        force: options.forceInit,
+                        hooksOnly: options.hooksOnly,
+                        docsOnly: options.docsOnly
+                    });
+                    console.log(`✅ Project initialization complete`);
+                } catch (error) {
+                    console.log(`⚠️  Project initialization failed, continuing: ${error}`);
+                }
+            }
+
             // Generate instance config
             const config = this.generateInstanceConfig(fullPath, role, options);
 
-            console.log(`🚀 Starting Claude instance:`);
+            console.log(`\n� Step 2: Setting up instance...`);
             console.log(`  Name: ${config.name}`);
             console.log(`  Work Dir: ${config.workDir}`);
             console.log(`  Tmux Session: ${config.tmuxSession}`);
 
             // Enable proxy if requested
             if (options.proxy) {
-                console.log(`🔧 Enabling proxy...`);
+                console.log(`\n🔧 Enabling proxy...`);
                 try {
-                    await $`source ~/.zshrc && proxy_git`.quiet();
-                    console.log(`✅ Proxy enabled`);
-                } catch {
-                    console.log(`⚠️  Proxy not found, continuing...`);
+                    // Set proxy environment variables directly
+                    // You can customize these addresses if needed
+                    const proxyHost = process.env.PROXY_HOST || '127.0.0.1';
+                    const proxyPort = process.env.PROXY_PORT || '7893';
+
+                    process.env.ALL_PROXY = `socks5://${proxyHost}:${proxyPort}`;
+                    process.env.http_proxy = `http://${proxyHost}:${proxyPort}`;
+                    process.env.https_proxy = `http://${proxyHost}:${proxyPort}`;
+                    process.env.HTTP_PROXY = `http://${proxyHost}:${proxyPort}`;
+                    process.env.HTTPS_PROXY = `http://${proxyHost}:${proxyPort}`;
+                    process.env.NO_PROXY = 'localhost,127.0.0.1,::1';
+
+                    console.log(`✅ Proxy environment variables set`);
+                    console.log(`   HTTP Proxy: ${process.env.http_proxy}`);
+                    console.log(`   HTTPS Proxy: ${process.env.https_proxy}`);
+
+                    // Optional: Test GitHub connectivity (without failing on exit code 1)
+                    try {
+                        await $`ssh -T git@github.com -o ConnectTimeout=5`.quiet();
+                    } catch (sshError) {
+                        // SSH test to GitHub often returns exit code 1 even on success
+                        // We don't treat this as a failure
+                        console.log(`   GitHub SSH test completed`);
+                    }
+
+                } catch (error) {
+                    console.log(`⚠️  Proxy setup failed: ${error}`);
+                    console.log(`   Continuing without proxy...`);
                 }
             }
 
             // Start message router if not running
             const configManager = await this.getConfigManager();
+            console.log(`\n🔧 Step 3: Ensuring message router is running...`);
             if (!(await this.isRouterRunning(configManager.getEffectiveRouterUrl()))) {
-                console.log(`🔧 Starting message router...`);
+                console.log(`� Starting message router...`);
                 await this.startRouter();
                 await new Promise(resolve => setTimeout(resolve, 2000));
+            } else {
+                console.log(`✅ Message router already running`);
             }
 
             // Clean up existing tmux session
-            console.log(`🔧 Setting up tmux session...`);
+            console.log(`\n🔧 Step 4: Setting up tmux session...`);
             try {
                 await $`tmux kill-session -t ${config.tmuxSession}`.quiet();
             } catch {
@@ -248,7 +296,7 @@ class ClaudeChatCLI {
             console.log(`✅ Tmux session '${config.tmuxSession}' ready`);
 
             // Auto-register instance
-            console.log(`📝 Auto-registering instance...`);
+            console.log(`\n📝 Step 5: Auto-registering instance...`);
             try {
                 const response = await fetch(`${configManager.getEffectiveRouterUrl()}/register`, {
                     method: 'POST',
@@ -274,16 +322,17 @@ class ClaudeChatCLI {
             }
 
             // Start Claude in tmux
-            console.log(`🤖 Starting Claude in tmux session...`);
+            console.log(`\n🤖 Step 6: Starting Claude in tmux session...`);
             await $`tmux send-keys -t ${config.tmuxSession} "claude --dangerously-skip-permissions" Enter`;
 
             // Attach to session unless --no-attach is specified
             if (!options.noAttach) {
-                console.log(`🔗 Connecting to tmux session (Ctrl+B then D to detach)`);
+                console.log(`\n🔗 Connecting to tmux session (Ctrl+B then D to detach)`);
+                console.log(`✅ All setup complete! Claude instance is ready.`);
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 await $`tmux attach -t ${config.tmuxSession}`;
             } else {
-                console.log(`✅ Claude instance started in background`);
+                console.log(`\n✅ All setup complete! Claude instance started in background`);
                 console.log(`💡 To attach: tmux attach -t ${config.tmuxSession}`);
             }
 
@@ -409,13 +458,16 @@ class ClaudeChatCLI {
             // Find the current directory (where claude-chat is)
             const currentDir = process.cwd();
 
-            // Start router in background
-            const proc = Bun.spawn(['bun', 'run', 'src/index.ts'], {
+            // Start router in background using built files
+            const { spawn } = require('child_process');
+            const proc = spawn('bun', ['run', 'dist/index.js'], {
                 cwd: currentDir,
-                stdout: 'ignore',
-                stderr: 'ignore',
-                stdin: 'ignore',
+                detached: true,
+                stdio: 'ignore'
             });
+
+            // Unref to allow parent to exit
+            proc.unref();
 
             // Wait a moment for startup
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -515,6 +567,25 @@ class ClaudeChatCLI {
         }
     }
 
+    private async autoInitProject(projectPath: string, options: any): Promise<void> {
+        // Similar to initProject but without exit() and with quieter output
+        const fullPath = path.resolve(projectPath);
+
+        if (!existsSync(fullPath)) {
+            throw new Error(`Project directory '${fullPath}' does not exist`);
+        }
+
+        // Setup hooks unless --docs-only
+        if (!options.docsOnly) {
+            await this.setupHooks(fullPath, options.force);
+        }
+
+        // Setup documentation unless --hooks-only
+        if (!options.hooksOnly) {
+            await this.setupDocumentation(fullPath, options.force);
+        }
+    }
+
     private async setupHooks(projectPath: string, force: boolean): Promise<void> {
         console.log(`🔧 Setting up hooks...`);
 
@@ -534,7 +605,7 @@ class ClaudeChatCLI {
         console.log(`✅ Created: ${notifierDest}`);
 
         // Handle settings.local.json
-        const settingsPath = path.join(projectPath, 'settings.local.json');
+        const settingsPath = path.join(claudeDir, 'settings.local.json');
         await this.updateSettings(settingsPath, force);
     }
 
@@ -546,9 +617,9 @@ class ClaudeChatCLI {
             try {
                 const content = await Bun.file(settingsPath).text();
                 settings = JSON.parse(content);
-                console.log(`📖 Found existing settings.local.json`);
+                console.log(`📖 Found existing .claude/settings.local.json`);
             } catch (error) {
-                console.log(`⚠️  Could not parse existing settings.local.json, creating new one`);
+                console.log(`⚠️  Could not parse existing .claude/settings.local.json, creating new one`);
                 settings = {};
             }
         }
@@ -641,12 +712,15 @@ class ClaudeChatCLI {
 
     private async getProtocolTemplate(): Promise<string> {
         const templatePath = path.join(__dirname, 'CLAUDE_TEMPLATE.md');
+        const configManager = await this.getConfigManager();
+        const port = configManager.getEffectivePort();
 
+        let template: string;
         if (existsSync(templatePath)) {
-            return await Bun.file(templatePath).text();
+            template = await Bun.file(templatePath).text();
         } else {
             // Fallback template if file doesn't exist
-            return `## 🚨 CRITICAL: Multi-Instance Collaboration Protocol v2.0 (Effective Immediately)
+            template = `## 🚨 CRITICAL: Multi-Instance Collaboration Protocol v2.0 (Effective Immediately)
 
 **⚠️ Every Claude instance must read this protocol first upon startup ⚠️**
 
@@ -660,18 +734,21 @@ class ClaudeChatCLI {
 ### Message Router & Communication
 
 **Router Endpoints:**
-- **Health Check**: \`GET http://localhost:3333/health\`
-- **Instance Status**: \`GET http://localhost:3333/status\`  
-- **Send Message**: \`POST http://localhost:3333/message\`
-- **Register Instance**: \`POST http://localhost:3333/register\`
+- **Health Check**: \`GET http://localhost:<PORT>/health\`
+- **Instance Status**: \`GET http://localhost:<PORT>/status\`  
+- **Send Message**: \`POST http://localhost:<PORT>/message\`
+- **Register Instance**: \`POST http://localhost:<PORT>/register\`
 
 **Inter-Instance Communication:**
 \`\`\`bash
-curl -X POST http://localhost:3333/message \\
+curl -X POST http://localhost:<PORT>/message \\
   -H "Content-Type: application/json" \\
   -d '{"from": "ui", "to": "main", "content": "Task completed"}'
 \`\`\``;
         }
+
+        // Replace <PORT> placeholder with actual port
+        return template.replace(/<PORT>/g, port.toString());
     }
 
     private async createNotifierScript(destPath: string): Promise<void> {
