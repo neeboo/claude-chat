@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "EventName": [
+      {
+        "matcher": "Stop",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/simple-notifier.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

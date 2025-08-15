@@ -1,0 +1,67 @@
+{
+  "name": "claude-chat",
+  "version": "1.0.0",
+  "description": "Claude Chat Message Router - A message routing service for Claude instances",
+  "main": "dist/index.js",
+  "bin": {
+    "claude-chat": "./dist/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neeboo/claude-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neeboo/claude-chat/issues"
+  },
+  "homepage": "https://github.com/neeboo/claude-chat#readme",
+  "scripts": {
+    "prepublishOnly": "bun run build",
+    "prepack": "bun run build",
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist --target bun && bun build src/cli.ts --outdir ./dist --target bun && cp src/CLAUDE_TEMPLATE.md dist/ && cp src/simple-notifier.sh dist/",
+    "build:cli": "bun build src/cli.ts --outdir ./dist --target bun && cp src/CLAUDE_TEMPLATE.md dist/ && cp src/simple-notifier.sh dist/",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "test": "bun test",
+    "type-check": "tsc --noEmit",
+    "install-cli": "bun run build:cli && chmod +x ./dist/cli.js"
+  },
+  "keywords": [
+    "claude",
+    "chat",
+    "router",
+    "bun",
+    "typescript",
+    "cli",
+    "messaging",
+    "tmux",
+    "communication"
+  ],
+  "author": "neeboo <ghostcorn@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.6",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
