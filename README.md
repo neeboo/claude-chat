@@ -17,6 +17,98 @@ This tool uses the `--dangerously-skip-permissions` flag to achieve smooth chat 
 
 ---
 
+## 🚀 Quick Start
+
+### ⚡ One-Line Installation (Recommended)
+
+Get everything installed with a single command:
+
+```bash
+# Clone and install automatically
+curl -fsSL https://raw.githubusercontent.com/neeboo/claude-chat/main/install.sh | bash
+```
+
+**Or manual setup:**
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/neeboo/claude-chat.git
+cd claude-chat
+
+# 2. Run the installation script
+chmod +x install.sh && ./install.sh
+```
+
+### 🎯 Instant Usage
+
+After installation, start using claude-chat immediately:
+
+```bash
+# Start a Claude instance (auto-setup everything)
+claude-chat start /path/to/your/project main
+
+# Open the chat interface in your browser
+claude-chat chat
+
+# That's it! Everything is ready.
+```
+
+### 🔄 Multi-Instance Setup
+
+```bash
+# Start multiple instances for different roles
+claude-chat start /path/to/frontend ui --no-attach
+claude-chat start /path/to/backend api --no-attach --proxy
+claude-chat start /path/to/docs docs --no-attach
+
+# Open chat to communicate with all instances
+claude-chat chat
+```
+
+### ✅ What the Installation Script Does
+
+The installation script automatically:
+1. ✅ **Detects your OS** and installs tmux if needed
+2. ✅ **Installs Bun runtime** if not present
+3. ✅ **Builds the project** and creates global command
+4. ✅ **Verifies everything** works correctly
+5. ✅ **Shows quick start guide** for immediate use
+
+### 🎮 What the Start Command Does
+
+The `claude-chat start` command automatically:
+1. ✅ Initializes the project with Claude Chat protocol
+2. ✅ Sets up VS Code hooks and configuration  
+3. ✅ Starts the message router if needed
+4. ✅ Creates and configures tmux session
+5. ✅ Registers the instance with the router
+6. ✅ Launches Claude with proper environment variables
+7. ✅ Connects you to the tmux session
+
+### 🔧 Manual Installation (If Needed)
+
+If the automatic installation doesn't work for your system:
+
+**Prerequisites:**
+```bash
+# Install tmux
+# macOS: brew install tmux
+# Ubuntu: sudo apt install tmux
+# CentOS: sudo dnf install tmux
+
+# Install Bun
+curl -fsSL https://bun.sh/install | bash
+```
+
+**Build from source:**
+```bash
+git clone https://github.com/neeboo/claude-chat.git
+cd claude-chat
+bun install
+bun run build
+sudo ln -sf $(pwd)/dist/cli.js /usr/local/bin/claude-chat
+```
+
 ## ✨ Key Features
 
 - 🚀 **One-Command Setup**: `claude-chat start <path> <role>` - does everything automatically
@@ -29,65 +121,6 @@ This tool uses the `--dangerously-skip-permissions` flag to achieve smooth chat 
 - 🔄 **Smart Proxy Support**: Integrated proxy setup for network access
 - 📝 **VS Code Hooks**: Automatic integration with Claude's event system
 - 👥 **Multi-Instance Support**: Manage multiple Claude instances simultaneously
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-Make sure you have the required tools installed:
-
-**tmux Installation:**
-```bash
-# macOS (Homebrew)
-brew install tmux
-
-# Ubuntu/Debian
-sudo apt-get install tmux
-
-# CentOS/RHEL/Fedora
-sudo dnf install tmux
-```
-
-**Bun Runtime:**
-```bash
-curl -fsSL https://bun.sh/install | bash
-```
-
-### Installation
-
-```bash
-# Global installation (recommended)
-npm install -g claude-chat
-
-# Or install from source
-git clone https://github.com/neeboo/claude-chat.git
-cd claude-chat
-bun install && bun run build && bun link
-```
-
-### One-Command Usage (Recommended)
-
-The fastest way to get started - everything is automatic:
-
-```bash
-# Start a Claude instance (auto-setup everything)
-claude-chat start /path/to/your/project main
-
-# Start additional instances for different roles
-claude-chat start /path/to/frontend ui --no-attach
-claude-chat start /path/to/backend api --no-attach --proxy
-
-# That's it! No manual setup needed.
-```
-
-This single command automatically:
-1. ✅ Initializes the project with Claude Chat protocol
-2. ✅ Sets up VS Code hooks and configuration  
-3. ✅ Starts the message router if needed
-4. ✅ Creates and configures tmux session
-5. ✅ Registers the instance with the router
-6. ✅ Launches Claude with proper environment variables
-7. ✅ Connects you to the tmux session
 
 ## 💬 Real-time Chat Interface
 

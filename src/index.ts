@@ -715,6 +715,8 @@ class ClaudeMessageRouter {
             padding: 0.75rem;
             border-radius: 8px;
             max-width: 80%;
+            word-break: break-all;
+            word-wrap: break-word;
         }
         .message.human { 
             background: #e3f2fd; 
