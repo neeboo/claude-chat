@@ -119,6 +119,15 @@ class ClaudeChatCLI {
             .action(async (options: any) => {
                 await this.manageConfig(options);
             });
+
+        // Chat command
+        this.program
+            .command('chat')
+            .description('Open the web-based chat interface')
+            .option('--port <port>', 'Override router port')
+            .action(async (options: any) => {
+                await this.openChatInterface(options);
+            });
     }
 
     private async registerInstance(
@@ -848,6 +857,37 @@ fi`;
         if (!options.show && !options.setPort && !options.setHost && !options.reset) {
             console.log(`❌ Please specify an action: --show, --set-port, --set-host, or --reset`);
         }
+    }
+
+    private async openChatInterface(options: any): Promise<void> {
+        const configManager = await this.getConfigManager();
+        const port = options.port ? parseInt(options.port, 10) : configManager.getEffectivePort();
+        const host = configManager.getEffectiveHost();
+        const chatUrl = `http://${host}:${port}/chat`;
+
+        console.log(`💬 Opening Claude Chat Interface...`);
+        console.log(`🌐 URL: ${chatUrl}`);
+
+        // Check if router is running
+        if (!(await this.isRouterRunning(`http://${host}:${port}`))) {
+            console.log(`⚠️  Router is not running. Starting it now...`);
+            await this.startRouter();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        // Try to open in browser
+        try {
+            await $`open ${chatUrl}`.quiet();
+            console.log(`✅ Chat interface opened in browser`);
+        } catch {
+            console.log(`💡 Please open ${chatUrl} in your browser manually`);
+        }
+
+        console.log(`\n📝 Chat Features:`);
+        console.log(`  - Real-time messaging with all Claude instances`);
+        console.log(`  - @all to broadcast to all instances`);
+        console.log(`  - @specific to message individual instances`);
+        console.log(`  - Live instance status and history`);
     }
 
     run(): void {
